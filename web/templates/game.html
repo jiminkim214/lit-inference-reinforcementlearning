@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>LitBot table</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <header class="top">
+    <a href="{{ url_for('index') }}">New deal</a>
+    <div class="score">
+      <span>Us {{ view.scores[0] }}</span>
+      <span>Them {{ view.scores[1] }}</span>
+      <span class="muted">first to {{ view.win_threshold }}</span>
+    </div>
+    <div class="muted">seed {{ view.seed }} · ply {{ view.plies }}</div>
+  </header>
+
+  {% if view.error %}
+  <div class="banner err">{{ view.error }}</div>
+  {% endif %}
+  {% if view.terminal %}
+  <div class="banner">
+    {% if view.winner == 0 %}Your team wins.{% elif view.winner == 1 %}The other team wins.{% else %}Draw.{% endif %}
+    {{ view.scores[0] }}–{{ view.scores[1] }}
+  </div>
+  {% endif %}
+
+  <div class="layout">
+    <section class="table">
+      <div class="felt">
+        {% for p in range(6) %}
+        {% set is_me = p == 0 %}
+        {% set is_team = p % 2 == 0 %}
+        {% set turn = p == view.current_player %}
+        <div class="seat seat-{{ p }} {% if turn %}turn{% endif %} {% if is_team %}ally{% else %}foe{% endif %}">
+          <div class="who">
+            P{{ p }}
+            {% if is_me %}(you){% endif %}
+            <small>{{ view.lineup[p] }}</small>
+          </div>
+          <div class="count">{{ view.hand_sizes[p] }} cards</div>
+        </div>
+        {% endfor %}
+        <div class="pot">
+          {% for hs in view.halfsuits %}
+            <span class="chip {% if hs.owner == 0 %}us{% elif hs.owner == 1 %}them{% else %}open{% endif %}">
+              {{ hs.name }}
+            </span>
+          {% endfor %}
+        </div>
+      </div>
+    </section>
+
+    <aside class="side">
+      <h2>History</h2>
+      <ol class="log">
+        {% for line in view.history %}
+        <li>{{ line }}</li>
+        {% endfor %}
+      </ol>
+    </aside>
+  </div>
+
+  <section class="hand-panel">
+    <h2>Your hand</h2>
+    <div class="hand">
+      {% for c in view.hand %}
+      <div class="card" data-hs="{{ c.halfsuit }}">{{ c.name }}</div>
+      {% endfor %}
+      {% if not view.hand %}
+      <p class="muted">Empty hand.</p>
+      {% endif %}
+    </div>
+  </section>
+
+  {% if not view.terminal and view.current_player == 0 %}
+  <section class="actions">
+    {% if view.legal_transfers %}
+    <form class="panel" action="{{ url_for('act', gid=gid) }}" method="post">
+      <input type="hidden" name="kind" value="pass">
+      <h3>Pass the turn</h3>
+      <select name="dest">
+        {% for mv in view.legal_transfers %}
+        <option value="{{ mv[1] }}">P{{ mv[1] }}</option>
+        {% endfor %}
+      </select>
+      <button type="submit">Pass</button>
+    </form>
+    {% endif %}
+
+    {% if view.legal_asks %}
+    <form class="panel" action="{{ url_for('act', gid=gid) }}" method="post">
+      <input type="hidden" name="kind" value="ask">
+      <h3>Ask</h3>
+      <label>Question
+        <select name="ask">
+          {% for a in view.legal_asks %}
+          <option value="{{ a.target }},{{ a.card }}">P{{ a.target }} for {{ a.card_name }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <button type="submit">Ask</button>
+    </form>
+    {% endif %}
+
+    <form class="panel claim" action="{{ url_for('act', gid=gid) }}" method="post">
+      <input type="hidden" name="kind" value="claim">
+      <h3>Claim a half-suit</h3>
+      <label>Half-suit
+        <select name="halfsuit" id="hs">
+          {% for hs in view.unclaimed %}
+          <option value="{{ hs.id }}">{{ hs.name }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <div id="owners"></div>
+      <button type="submit">Claim</button>
+      <p class="hint">A wrong name, or a card on the other team, gives them the set.</p>
+    </form>
+  </section>
+  {% elif not view.terminal %}
+  <p class="muted center">Waiting on P{{ view.current_player }}… refresh if the AI is still thinkinview.</p>
+  {% endif %}
+
+  {% if view.terminal %}
+  <form class="panel" action="{{ url_for('feedback', gid=gid) }}" method="post">
+    <h3>Short feedback</h3>
+    <label>Did the AI’s asks and claims seem reasonable?
+      <select name="reasonable">
+        <option value="yes">Yes</option>
+        <option value="mixed">Mixed</option>
+        <option value="no">No</option>
+      </select>
+    </label>
+    <label>Comments
+      <textarea name="comments" rows="3" placeholder="Anything odd, brilliant, or illegal-feeling?"></textarea>
+    </label>
+    <button type="submit">Save feedback</button>
+  </form>
+  {% endif %}
+
+  <script>
+    const halfsuits = {{ view.halfsuits | tojson }};
+    const teammates = {{ (view.teammates + [0]) | tojson }};
+    const hsSel = document.getElementById("hs");
+    const box = document.getElementById("owners");
+    function renderOwners() {
+      if (!hsSel || !box) return;
+      const hs = halfsuits.find(h => h.id === Number(hsSel.value));
+      if (!hs) return;
+      box.innerHTML = hs.cards.map((c, i) => {
+        const opts = teammates.map(p => `<option value="${p}">P${p}${p===0?" (you)":""}</option>`).join("");
+        return `<label>${c.name}<select name="owner_${i}">${opts}</select></label>`;
+      }).join("");
+    }
+    if (hsSel) {
+      hsSel.addEventListener("change", renderOwners);
+      renderOwners();
+    }
+  </script>
+</body>
+</html>

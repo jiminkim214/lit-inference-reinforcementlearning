@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>LitBot — Literature</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <main class="setup">
+    <h1>LitBot</h1>
+    <p class="lede">Play Literature as one seat on a six-player table. Your teammates sit on your left and right’s opposite chairs (even seats). No table talk — deduction only.</p>
+    <form action="{{ url_for('new') }}" method="post" class="panel">
+      <label>
+        Teammates
+        <select name="teammate">
+          <option value="greedy">Greedy</option>
+          <option value="ismcts">ISMCTS</option>
+          <option value="pimc">PIMC</option>
+          <option value="random">Random</option>
+        </select>
+      </label>
+      <label>
+        Opponents
+        <select name="opponent">
+          <option value="greedy">Greedy</option>
+          <option value="ismcts">ISMCTS</option>
+          <option value="pimc">PIMC</option>
+          <option value="random">Random</option>
+        </select>
+      </label>
+      <label>
+        Seed (optional)
+        <input type="number" name="seed" placeholder="random">
+      </label>
+      <button type="submit">Deal</button>
+    </form>
+    <p class="hint">First team to 5 half-suits wins. Wrong claims go to the other team.</p>
+  </main>
+</body>
+</html>
