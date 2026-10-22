@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+.DS_Store
+.pytest_cache/
+.venv/
+data/
+web/data/
+results/*.jsonl
+results/*.json
+results/*.npz
+results/*.png
+!results/README.md
